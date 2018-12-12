@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.zip.InflaterInputStream;
 
 class Game {
 
@@ -6,7 +7,9 @@ class Game {
     private static final int LOWERBOUND = 1;
     private static final int UPPERBOUND = 2;
     private static final int INFINITY = 40000;
-    private static final int ttLastEntry = 0xffff; // 65535 (+1)
+
+    // 65535 (+1) ~safe
+    private static final int ttLastEntry = 0xfffff; // 1048575 (+1)
 
     private Board board;
     private ArrayList<Move> playedMoves;
@@ -28,7 +31,7 @@ class Game {
         currentPlayer = Color.WHITE;
         index = -1;
         stalemate = false;
-        transpositionTable = new HashEntry[ttLastEntry + 1];
+        initializeTranspositionTable();
     }
 
     int getCurrentPlayer() {
@@ -135,6 +138,7 @@ class Game {
             minimax = minimax(depth - 1, -INFINITY, INFINITY, currentPlayer, startTime, 0);
             if (minimax.move != null) {
                 bestMove = minimax.move;
+//                System.out.println(minimax.move);
                 if (minimax.winningMove) {
                     break;
                 }
@@ -143,7 +147,6 @@ class Game {
         }
         System.out.println("Transpostion Table Hits = " + hits);
         System.out.println("Max depth = " + maxDepth);
-        System.out.println();
         return bestMove;
     }
 
@@ -174,10 +177,10 @@ class Game {
         }
 
         // Winning Move
-        Move winningMove = pushPawn(bb, validMoves, col);
+        MoveEval winningMove = pushPawn(bb, validMoves, col);
         if (winningMove != null) {
-            // System.out.println(winningMove);
-            return new MoveEval(winningMove, INFINITY * col, true);
+//            System.out.println(winningMove.move);
+            return winningMove;
         }
 
         // Terminal Node
@@ -209,21 +212,27 @@ class Game {
 
         int bestEval;
         int eval;
+        int bestInitialEval;
+        int initialEval;
         Move bestMove = validMoves[0];
         if (col == Color.WHITE) {
             bestEval = -INFINITY;
+            bestInitialEval = -INFINITY;
             for (Move move : validMoves) {
 //                for (int i = 0; i < debug; i++) {
 //                    System.out.print("\t");
 //                }
 //                System.out.println(move + ":");
                 applyMove(move);
+                initialEval = Evaluation.initialEval(new Bitboard(board),
+                        board.getEnPassantColumn(move));
                 eval = minimax(depth - 1, alpha, beta, -col, startTime, debug + 1).eval;
 //                System.out.println(eval);
                 unapplyMove(move);
-                if (eval > bestEval) {
+                if (eval > bestEval || (eval == bestEval && initialEval > bestInitialEval)) {
                     bestEval = eval;
                     bestMove = move;
+                    bestInitialEval = initialEval;
                 }
                 alpha = Math.max(alpha, bestEval);
                 if (beta <= alpha) {
@@ -232,18 +241,22 @@ class Game {
             }
         } else {
             bestEval = INFINITY;
+            bestInitialEval = INFINITY;
             for (Move move : validMoves) {
 //                for (int i = 0; i < debug; i++) {
 //                    System.out.print("\t");
 //                }
 //                System.out.println(move + ":");
                 applyMove(move);
+                initialEval = Evaluation.initialEval(new Bitboard(board),
+                        board.getEnPassantColumn(move));
                 eval = minimax(depth - 1, alpha, beta, -col, startTime, debug + 1).eval;
 //                System.out.println(eval);
                 unapplyMove(move);
-                if (eval < bestEval) {
+                if (eval < bestEval || (eval == bestEval && initialEval < bestInitialEval)) {
                     bestEval = eval;
                     bestMove = move;
+                    bestInitialEval = initialEval;
                 }
                 beta = Math.min(beta, eval);
                 if (beta <= alpha) {
@@ -270,113 +283,50 @@ class Game {
         return new MoveEval(bestMove, bestEval, false);
     }
 
-    private Move pushPawn(Bitboard bb, Move[] validMoves, int col) {
-        boolean isPassedPawn = false;
+    private MoveEval pushPawn(Bitboard bb, Move[] validMoves, int col) {
+        boolean push = false;
         int index = 0;
         int pawn = 0;
-        int file;
-        boolean push = true;
+        boolean confirmPush = true;
         if (col == Color.WHITE) {
-            while (!isPassedPawn) {
-                isPassedPawn = true;
+            while (!push && index < bb.getWhitePawns().size()) {
                 pawn = bb.getWhitePawns().get(index);
-                file = pawn % 8;
-                if (file == 7) { // A File
-                    for (int row = 1 + pawn / 8; row < 8; row++) {
-                        int i = row * 8 + file;
-                        if (board.get(i) != Color.NONE
-                                || board.get(i - 1) != Color.NONE) {
-                            isPassedPawn = false;
-                            break;
-                        }
-                    }
-                } else if (file == 0) { // H File
-                    for (int row = 1 + pawn / 8; row < 8; row++) {
-                        int i = row * 8 + file;
-                        if (board.get(i) != Color.NONE
-                                || board.get(i + 1) != Color.NONE) {
-                            isPassedPawn = false;
-                            break;
-                        }
-                    }
-                } else {
-                    for (int row = 1 + pawn / 8; row < 8; row++) {
-                        int i = row * 8 + file;
-                        if (board.get(i) != Color.NONE
-                                || board.get(i + 1) != Color.NONE
-                                || board.get(i - 1) != Color.NONE) {
-                            isPassedPawn = false;
-                            break;
-                        }
-                    }
-                }
+                push = bb.isWhitePassedPawn(pawn) || bb.isWhitePassedPawn(pawn + 8)
+                        || (pawn / 8 >= 4 && bb.isWhiteCandidate(pawn)
+                        && bb.blackAttackers(pawn + 8) <= bb.whiteAttackers(pawn + 8));
                 index++;
-                if (index == bb.getWhitePawns().size()) {
-                    break;
-                }
             }
-            if (isPassedPawn) {
+            if (push) {
                 int wD = 7 - pawn / 8;
                 for (int bp : bb.getBlackPawns()) {
                     int bD = bp / 8;
                     if (wD > bD) {
-                        push = false;
+                        confirmPush = false;
                     }
                 }
             }
         } else {
-            while (!isPassedPawn) {
-                isPassedPawn = true;
+            while (!push && index < bb.getBlackPawns().size()) {
                 pawn = bb.getBlackPawns().get(index);
-                file = pawn % 8;
-                if (file == 7) { // A File
-                    for (int row = (pawn / 8) - 1; row >= 0; row--) {
-                        int i = row * 8 + file;
-                        if (board.get(i) != Color.NONE
-                                || board.get(i - 1) != Color.NONE) {
-                            isPassedPawn = false;
-                            break;
-                        }
-                    }
-                } else if (file == 0) { // H File
-                    for (int row = (pawn / 8) - 1; row >= 0; row--) {
-                        int i = row * 8 + file;
-                        if (board.get(i) != Color.NONE
-                                || board.get(i + 1) != Color.NONE) {
-                            isPassedPawn = false;
-                            break;
-                        }
-                    }
-                } else {
-                    for (int row = (pawn / 8) - 1; row >= 0; row--) {
-                        int i = row * 8 + file;
-                        if (board.get(i) != Color.NONE
-                                || board.get(i + 1) != Color.NONE
-                                || board.get(i - 1) != Color.NONE) {
-                            isPassedPawn = false;
-                            break;
-                        }
-                    }
-                }
+                push = bb.isBlackPassedPawn(pawn) || bb.isBlackPassedPawn(pawn - 8)
+                        || (pawn / 8 <= 3 && bb.isBlackCandidate(pawn)
+                        && bb.whiteAttackers(pawn - 8) <= bb.blackAttackers(pawn - 8));
                 index++;
-                if (index == bb.getBlackPawns().size()) {
-                    break;
-                }
             }
-            if (isPassedPawn) {
+            if (push) {
                 int bD = pawn / 8;
                 for (int wp : bb.getWhitePawns()) {
                     int wD = 7 - (wp / 8);
                     if (bD > wD) {
-                        push = false;
+                        confirmPush = false;
                     }
                 }
             }
         }
-        if (isPassedPawn && push) {
+        if (push && confirmPush) {
             for (Move move : validMoves) {
                 if (move.getFrom() == pawn && !move.isCapture() && !move.isDoublePush()) {
-                    return move;
+                    return new MoveEval(move, INFINITY * col, true);
                 }
             }
         }
@@ -503,5 +453,27 @@ class Game {
             }
         }
         return false;
+    }
+
+    private void initializeTranspositionTable() {
+        transpositionTable = new HashEntry[ttLastEntry + 1];
+//        Board fake = new Board('h', 'a');
+//        Move[] whiteMoves1 = getAllValidMoves(new Bitboard(fake), 1, -1);
+//        for (Move wm1 : whiteMoves1) {
+//            fake.applyMove(wm1);
+//            if (wm1.toString().equals("a2-a4")) {
+//
+//            } else {
+//
+//            }
+//            fake.unapplyMove(wm1);
+//        }
+    }
+
+    private void addEntry(Board brd, Move bestMove) {
+        Bitboard bb = new Bitboard(brd);
+        long hash = brd.getHash();
+        transpositionTable[(int) (hash & ttLastEntry)] = new HashEntry(hash, bb.w, bb.b,
+                INFINITY, INFINITY, bestMove);
     }
 }

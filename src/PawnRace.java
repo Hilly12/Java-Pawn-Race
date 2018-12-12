@@ -17,8 +17,8 @@ public class PawnRace extends JFrame {
         char blackGap = getFileInput("black");
         Board board = new Board(whiteGap, blackGap);
         Game game = new Game(board, 5000);
-        final boolean isWhiteComputer = false;
-        final boolean isBlackComputer = true;
+        final boolean isBlackComputer = getAIBlackToPlay();
+        final boolean isWhiteComputer = !isBlackComputer;
 
         JFrame F = new JFrame("Pawn Race");
         F.setResizable(false);
@@ -49,6 +49,24 @@ public class PawnRace extends JFrame {
 //        } else if (game.getWinner() == Color.BLACK) {
 //            System.out.println("Black Wins");
 //        }
+    }
+
+    private static boolean getAIBlackToPlay() {
+        Scanner input = new Scanner(System.in);
+        int col = 0;
+        do {
+            System.out.print("Enter the AI's color: ");
+            String in = input.nextLine().toLowerCase();
+            switch (in) {
+                case "white":
+                    col = 1;
+                    break;
+                case "black":
+                    col = -1;
+                    break;
+            }
+        } while (col == 0);
+        return col == Color.BLACK;
     }
 
     private static char getFileInput(String col) {

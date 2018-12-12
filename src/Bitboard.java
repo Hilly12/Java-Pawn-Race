@@ -13,6 +13,7 @@ class Bitboard {
     private static final long notHFile = 0xfefefefefefefefeL;
 //    private static final long whiteSquares = 0xaa55aa55aa55aa55L;
 //    private static final long blackSquares = 0x55aa55aa55aa55aaL;
+
     private static final long[] columns = {
             0x8080808080808080L,
             0x4040404040404040L,
@@ -25,6 +26,12 @@ class Bitboard {
     };
 
     private static int[] firstBit;
+    private static long[] whiteFrontSpan;
+    private static long[] blackBackSpan;
+    private static long[] whiteNorth;
+    private static long[] blackSouth;
+    private static long[] blackAttacksTo;
+    private static long[] whiteAttacksTo;
 
     long w;
     long b;
@@ -43,6 +50,82 @@ class Bitboard {
                 count++;
             }
             firstBit[i] = count;
+        }
+
+        whiteFrontSpan = new long[64];
+        blackBackSpan = new long[64];
+        whiteNorth = new long[64];
+        blackSouth = new long[64];
+        whiteAttacksTo = new long[64];
+        blackAttacksTo = new long[64];
+
+        int count = 63;
+        long current;
+        int bitstring;
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (j == 0) {
+                    bitstring = 0b11000000;
+                } else if (j == 7) {
+                    bitstring = 0b00000011;
+                } else {
+                    bitstring = 0b111 << (6 - j);
+                }
+                // White
+                current = bitstring;
+                for (int k = 0; k < i; k++) {
+                    current = (current << 8) | bitstring;
+                }
+                for (int k = i; k < 8; k++) {
+                    current = (current << 8);
+                }
+                whiteFrontSpan[count] = current;
+                // Black
+                current = 0;
+                for (int k = i + 1; k < 8; k++) {
+                    current = (current << 8) | bitstring;
+                }
+                blackBackSpan[count] = current;
+                count--;
+            }
+        }
+        count = 63;
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                bitstring = 1 << (7 - j);
+                // White
+                current = bitstring;
+                for (int k = 0; k < i; k++) {
+                    current = (current << 8) | bitstring;
+                }
+                for (int k = i; k < 8; k++) {
+                    current = (current << 8);
+                }
+                whiteNorth[count] = current;
+                // Black
+                current = 0;
+                for (int k = i + 1; k < 8; k++) {
+                    current = (current << 8) | bitstring;
+                }
+                blackSouth[count] = current;
+                count--;
+            }
+        }
+        count = 55;
+        for (int i = 1; i < 7; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (j == 0) {
+                    whiteAttacksTo[count] = ultraLShiftOne(count - 9);
+                    blackAttacksTo[count] = ultraLShiftOne(count + 7);
+                } else if (j == 7) {
+                    whiteAttacksTo[count] = ultraLShiftOne(count - 7);
+                    blackAttacksTo[count] = ultraLShiftOne(count + 9);
+                } else {
+                    whiteAttacksTo[count] = ultraLShiftOne(count - 9) | ultraLShiftOne(count - 7);
+                    blackAttacksTo[count] = ultraLShiftOne(count + 7) | ultraLShiftOne(count + 9);
+                }
+                count--;
+            }
         }
     }
 
@@ -121,6 +204,50 @@ class Bitboard {
         return b & row1;
     }
 
+    boolean whiteDoublePawn(int col) {
+        return Long.bitCount(columns[col] & w) != 1;
+    }
+
+    boolean blackDoublePawn(int col) {
+        return Long.bitCount(columns[col] & b) != 1;
+    }
+
+    boolean whiteIsolated(int pawn) {
+        return Long.bitCount(whiteFrontSpan[pawn - 8] & ~whiteNorth[pawn - 8] & w) == 0;
+    }
+
+    boolean blackIsolated(int pawn) {
+        return Long.bitCount(blackBackSpan[pawn + 8] & ~blackSouth[pawn + 8] & b) == 0;
+    }
+
+    boolean isWhitePassedPawn(int pawn) {
+        return (whiteFrontSpan[pawn] & b) == 0;
+    }
+
+    boolean isBlackPassedPawn(int pawn) {
+        return (blackBackSpan[pawn] & w) == 0;
+    }
+
+    boolean isWhiteCandidate(int pawn) {
+        return (whiteNorth[pawn] & (w | b)) == 0;
+    }
+
+    boolean isBlackCandidate(int pawn) {
+        return (blackSouth[pawn] & (w | b)) == 0;
+    }
+
+    int whiteAttackers(int pawn) {
+        return Long.bitCount(whiteAttacksTo[pawn] & w);
+    }
+
+    long wA(int pawn) {
+        return whiteAttacksTo[pawn] & w;
+    }
+
+    int blackAttackers(int pawn) {
+        return Long.bitCount(blackAttacksTo[pawn] & b);
+    }
+
     ArrayList<Integer> getWhitePawns() {
         return whitePawns;
     }
@@ -144,5 +271,34 @@ class Bitboard {
             }
         } while (true);
         return new IntLong(fb + count, (n >> fb) ^ 1);
+    }
+
+    static void printLong(long bbl) {
+        System.out.println();
+        for (int row = 0; row < 8; row++) {
+            long r = (bbl >> (56 - row * 8)) & 255;
+            System.out.println("---------------------------------");
+            for (int col = 0; col < 8; col++) {
+                System.out.print("| ");
+                if (((r >> (7 - col)) & 1) == 0b1) {
+                    System.out.print(1);
+                } else {
+                    System.out.print(" ");
+                }
+                System.out.print(" ");
+            }
+            System.out.println("|");
+        }
+        System.out.println("---------------------------------");
+        System.out.println();
+    }
+
+    private static long ultraLShiftOne(int op) {
+        long out = 1;
+        while (op > 16) {
+            out <<= 16;
+            op -= 16;
+        }
+        return out << op;
     }
 }

@@ -17,20 +17,23 @@ class Board {
         board[15 - (whiteGap - 'a')] = Color.NONE;
         board[55 - (blackGap - 'a')] = Color.NONE;
 
-//        int[] n = { 0, 0, 0, 0, 0, 0, 0, 0,
-//                1, 0, 0, 0, 0, 0, 0, 0,
-//                0, 1, 1, 0, 0, 0, 0, 0,
+        // Turing Test (Black always wins if white plays c2-c3)
+//        int[] n = {
 //                0, 0, 0, 0, 0, 0, 0, 0,
-//                -1, -1, -1, 0, 0, 0, 0, 0,
+//                0, 0, 0, 0, 0, 1, 0, 0,
+//                0, 0, 0, 0, 0, 0, 1, 1,
+//                0, 0, 0, 0, 0, 0, 0, 0,
+//                0, 0, 0, 0, 0, -1, -1, -1,
 //                0, 0, 0, 0, 0, 0, 0, 0,
 //                0, 0, 0, 0, 0, 0, 0, 0,
-//                0, 0, 0, 0, 0, 0, 0, 0 };
+//                0, 0, 0, 0, 0, 0, 0, 0
+//        };
 //        board = n.clone();
 
         whitePieces = 7;
         blackPieces = 7;
 
-        // hash = Zobrist.getZobristHash(board);
+        hash = Zobrist.getZobristHash(board, false);
     }
 
     int get(int i) {

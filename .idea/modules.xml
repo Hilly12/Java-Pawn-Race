@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/PawnRaceFinal.iml" filepath="$PROJECT_DIR$/PawnRaceFinal.iml" />
+      <module fileurl="file://$PROJECT_DIR$/javapawnracecompetition.iml" filepath="$PROJECT_DIR$/javapawnracecompetition.iml" />
     </modules>
   </component>
 </project>

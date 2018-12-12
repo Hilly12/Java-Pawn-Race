@@ -26,7 +26,7 @@ class Zobrist {
         zBlackMove = random64();
     }
 
-    static long getZobristHash(int[] board) {
+    static long getZobristHash(int[] board, boolean blackToPlay) {
         long hash = 0;
         for (int i = 0; i < 64; i++) {
             if (board[i] == 1) {
@@ -34,6 +34,9 @@ class Zobrist {
             } else if (board[i] == -1) {
                 hash ^= zArray[1][i];
             }
+        }
+        if (blackToPlay) {
+            hash ^= zBlackMove;
         }
         return hash;
     }

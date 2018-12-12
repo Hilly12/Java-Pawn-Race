@@ -12,6 +12,15 @@ class HashEntry {
 
     }
 
+    HashEntry(long hash, long w, long b, int depth, int eval, Move bestMove) {
+        this.hash = hash;
+        this.w = w;
+        this.b = b;
+        this.depth = depth;
+        this.eval = eval;
+        this.bestMove = bestMove;
+    }
+
     boolean equals(Bitboard bb, long otherHash) {
         return bb.w == w && bb.b == b && otherHash == hash;
     }
