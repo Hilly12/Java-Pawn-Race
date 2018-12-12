@@ -148,6 +148,14 @@ class Bitboard {
         Collections.reverse(blackPawns);
     }
 
+    boolean getAIType(char wG, char bG) {
+//        if (wG == 'h' && bG == 'a'
+//        || wG == 'a' && bG == 'h') {
+//            return false;
+//        }
+        return false;
+    }
+
     long whiteSinglePush() {
         return ((w & ~row8) << 8) & ~(w | b);
     }

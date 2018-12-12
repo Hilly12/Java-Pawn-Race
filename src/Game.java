@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.zip.InflaterInputStream;
 
 class Game {
 
@@ -89,6 +88,17 @@ class Game {
         Move move = AI(validMoves);
         System.out.println(move);
         applyMove(move);
+    }
+
+    void undo() {
+        if (getLastMove() == null) {
+            return;
+        }
+        unapplyMove(getLastMove());
+        if (getLastMove() == null) {
+            return;
+        }
+        unapplyMove(getLastMove());
     }
 
     boolean makeGUIMove(String san) {

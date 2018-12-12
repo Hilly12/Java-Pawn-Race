@@ -21,7 +21,6 @@ class Zobrist {
             for (int i = 0; i < 64; i++) {
                 zArray[color][i] = random64();
             }
-
         }
         zBlackMove = random64();
     }

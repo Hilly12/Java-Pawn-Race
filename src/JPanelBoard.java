@@ -2,8 +2,9 @@ import javax.swing.*;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.event.*;
+import java.security.Key;
 
-public class JPanelBoard extends JPanel implements MouseListener {
+public class JPanelBoard extends JPanel implements MouseListener, KeyListener {
 
     private static final long serialVersionUID = 1L;
     private static int squareSize;
@@ -17,6 +18,7 @@ public class JPanelBoard extends JPanel implements MouseListener {
     private boolean isBlackComputer;
 
     private int selected;
+    private boolean undo;
 
     private Timer gameTimer;
 
@@ -26,6 +28,7 @@ public class JPanelBoard extends JPanel implements MouseListener {
         super();
         F.setFocusable(true);
         F.addMouseListener(this);
+        F.addKeyListener(this);
         F.setSize(appW, appH);
         this.appW = appW;
         this.appH = appH;
@@ -35,6 +38,7 @@ public class JPanelBoard extends JPanel implements MouseListener {
         this.isBlackComputer = isBlackComputer;
         squareSize = 50;
         selected = -1;
+        undo = false;
         startGameTimer();
     }
 
@@ -45,6 +49,13 @@ public class JPanelBoard extends JPanel implements MouseListener {
                 game.makeAIMove();
                 if (game.getWinner() != 0) {
                     gameTimer.stop();
+                }
+            }
+            if (game.getCurrentPlayer() == 1 && !isWhiteComputer
+                    || game.getCurrentPlayer() == -1 && !isBlackComputer) {
+                if (undo) {
+                    game.undo();
+                    undo = false;
                 }
             }
             repaint();
@@ -156,4 +167,21 @@ public class JPanelBoard extends JPanel implements MouseListener {
 
     public void mouseReleased(MouseEvent e) {
     }
+
+    public void keyPressed(KeyEvent e) {
+        if (e.getKeyCode() == KeyEvent.VK_U) {
+            undo = true;
+        }
+    }
+
+    public void keyReleased(KeyEvent e) {
+        if (e.getKeyCode() == KeyEvent.VK_U) {
+            undo = false;
+        }
+    }
+
+    public void keyTyped(KeyEvent e) {
+
+    }
+
 }

@@ -2,9 +2,13 @@ class Board {
     private int[] board;
     private int whitePieces;
     private int blackPieces;
+    char wG;
+    char bG;
     private long hash;
 
     Board(char whiteGap, char blackGap) {
+        wG = whiteGap;
+        bG = blackGap;
         board = new int[64];
 
         for (int i = 0; i < 64; i++) {
